@@ -1,3 +1,4 @@
 Este script lê os dados dos arquivos texto do eDNE 'delimitado', os transformanum dump SQL e gera uma tabela unica com todos os CEPs do eDNE (modelo tradicional ETL).
+Foi escrito para o DNE versão 1906 atualizado até 27/06/2019
 
 Como o eDNE é de acesso restrito não inclui seus arquivos aqui, mas apenas o dump da tabela final.
