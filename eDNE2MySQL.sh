@@ -1,15 +1,16 @@
 #!/bin/bash
 #eDNE2MySQL.sh
-#rodar este script no mesmo diretÛrio dos .txt do eDNE delimitado
+#rodar este script no mesmo diret√≥rio dos .txt do eDNE delimitado
 
-banco="xxx_movedb"   <-- criar este banco no localhost antes de rodar este script!
+ceporigem="09770420"     #troque pelo seu cep!
+banco="rcamo273_movedb"   #criar este banco no localhost antes de rodar este script!
 tab_destino="newtab_cep"
 lista="./lista_cep.txt"
 lista_uf=AC,AL,AM,AP,BA,CE,DF,ES,GO,MA,MG,MS,MT,PA,PB,PE,PI,PR,RJ,RN,RO,RR,RS,SC,SE,SP,TO
 
 OLDIFS=$IFS
 
-#redireciona todas as saÌdas para o arquivo de log
+#redireciona todas as sa√≠das para o arquivo de log
 #savelog -l ./eDNE2MySQL.log > /dev/null
 #exec 2>&1 1>./eDNE2MySQL.log
 
@@ -237,7 +238,7 @@ mysql -e "CREATE TABLE $banco.ECT_PAIS (
 mysql -e "LOAD DATA LOCAL INFILE './ECT_PAIS.TXT' INTO TABLE $banco.ECT_PAIS COLUMNS TERMINATED BY '@'"
 
 #Cria tabela de destino
-#Coluna OBS È tempor·ria e deve ser eliminada apÛs popular, ou usada (!=null) como flag para gerar a tabela de ceps a pesquisar 
+#Coluna OBS √© tempor√°ria e deve ser eliminada ap√≥s popular, ou usada (!=null) como flag para gerar a tabela de ceps a pesquisar 
 echo "Criando tabela destino ($banco.$tab_destino)"
 mysql -e "DROP TABLE IF EXISTS $banco.$tab_destino"
 mysql -e "CREATE TABLE $banco.$tab_destino (
@@ -260,26 +261,26 @@ mysql -e "CREATE TABLE $banco.$tab_destino (
 #Popula tabela de destino
 #
 
-#LOG_LOCALIDADE (se OBS != NULL ent„o deve pesquisar frete mais tarde)
+#LOG_LOCALIDADE (se OBS != NULL ent√£o deve pesquisar frete mais tarde)
 echo '-Populando tabela destino com LOG_LOCALIDADE'
 #
-#1- CEP ˙nico para a localidade. DISTRITO (LOC_IN_SIT = '0' AND LOC_IN_TIPO_LOC = 'D')
-#CIDADE (distrito) AS CIDADE. ex: 13775000  Caconde (Barr‚nia)
+#1- CEP √∫nico para a localidade. DISTRITO (LOC_IN_SIT = '0' AND LOC_IN_TIPO_LOC = 'D')
+#CIDADE (distrito) AS CIDADE. ex: 13775000  Caconde (Barr√¢nia)
 mysql -e "INSERT INTO $banco.$tab_destino (UF, OBS, CIDADE, CEP) SELECT UFE_SG AS UF, LOC_NU_SUB AS OBS, CONCAT((SELECT LOC_NO FROM $banco.LOG_LOCALIDADE WHERE $banco.LOG_LOCALIDADE.LOC_NU = OBS),' (', LOC_NO, ')') AS CIDADE, CEP FROM $banco.LOG_LOCALIDADE  WHERE (LOC_IN_SIT = '0' AND LOC_IN_TIPO_LOC = 'D')"
 
 #2- CEP unico para a localidade. MUNICIPIO (LOC_IN_SIT = '0' AND LOC_IN_TIPO_LOC = 'M')
-#n„o tem bairro. ex: 13770000
+#n√£o tem bairro. ex: 13770000
 mysql -e "INSERT INTO $banco.$tab_destino (UF, OBS, CIDADE, CEP) SELECT UFE_SG AS UF, '0000' AS OBS, LOC_NO AS CIDADE, CEP FROM $banco.LOG_LOCALIDADE  WHERE (LOC_IN_SIT = '0' AND LOC_IN_TIPO_LOC = 'M')"
 
-#3- CEP ˙nico para a localidade. POVOADO (LOC_IN_SIT = '0' AND LOC_IN_TIPO_LOC = 'P')
+#3- CEP √∫nico para a localidade. POVOADO (LOC_IN_SIT = '0' AND LOC_IN_TIPO_LOC = 'P')
 #CIDADE (povoado) AS CIDADE. ex: 11200000
 mysql -e "INSERT INTO $banco.$tab_destino (UF, OBS, CIDADE, CEP) SELECT UFE_SG AS UF, LOC_NU_SUB AS OBS, CONCAT((SELECT LOC_NO FROM $banco.LOG_LOCALIDADE WHERE $banco.LOG_LOCALIDADE.LOC_NU = OBS),' (', LOC_NO, ')') AS CIDADE, CEP FROM $banco.LOG_LOCALIDADE  WHERE (LOC_IN_SIT = '0' AND LOC_IN_TIPO_LOC = 'P')"
 
 #4- CEP por rua. MUNICIPIO (LOC_IN_SIT = '1' AND LOC_IN_TIPO_LOC = 'M')
-#N√O PRECISA CRIAR ESTES NA NEWTAB_CEP. SE CRIAR VAI TER DOIS CEPS IGUAIS NO BANCO (LOGRADOURO E LOOCALIDADE - ERRO!)
-#D¡ PARA CRIAR A LISTA_CIDADES DESTES MAIS TARDE PESQUISANDO POR (LOC_IN_SIT = '1' AND LOC_IN_TIPO_LOC = 'M') E
-#BUSCANDO O CEP NA PR”PRIA TABNEW_CEP J¡ POPULADAS PELAS LOGRADOURO_XX
-#Cidade e Bairro especificados. Busca primeia ocorrÍncia de LOC_NU em LOG_LOGRADOURO_XX. ex: 09770420
+#N√ÉO PRECISA CRIAR ESTES NA NEWTAB_CEP. SE CRIAR VAI TER DOIS CEPS IGUAIS NO BANCO (LOGRADOURO E LOOCALIDADE - ERRO!)
+#D√Å PARA CRIAR A LISTA_CIDADES DESTES MAIS TARDE PESQUISANDO POR (LOC_IN_SIT = '1' AND LOC_IN_TIPO_LOC = 'M') E
+#BUSCANDO O CEP NA PR√ìPRIA TABNEW_CEP J√Å POPULADAS PELAS LOGRADOURO_XX
+#Cidade e Bairro especificados. Busca primeia ocorr√™ncia de LOC_NU em LOG_LOGRADOURO_XX. ex: 09770420
 
 #LOG_LOGRADOURO_XX
 for uf in $lista_uf; do 
@@ -289,7 +290,7 @@ done
 
 #5 - CEP por rua. DISTRITO (LOC_IN_SIT = '2' AND LOC_IN_TIPO_LOC = 'D')
 #6 - CEP por rua. POVOADO (LOC_IN_SIT = '2' AND LOC_IN_TIPO_LOC = 'P'). ex 29198112
-#j· inclusoS na base de ceps por rua. ex: 11200000
+#j√° inclusoS na base de ceps por rua. ex: 11200000
 
 
 #LOG_GRANDE_USUARIO
@@ -304,10 +305,10 @@ mysql -e "INSERT INTO $banco.$tab_destino (UF, CIDADE, BAIRRO, LOGRADOURO, CEP, 
 echo '-Populando tabela destino com LOG_CPC'
 mysql -e "INSERT INTO $banco.$tab_destino (UF, CIDADE, LOGRADOURO, CEP) SELECT UFE_SG AS UF, (SELECT LOC_NO FROM $banco.LOG_LOCALIDADE WHERE $banco.LOG_CPC.LOC_NU = $banco.LOG_LOCALIDADE.LOC_NU) AS CIDADE, CPC_ENDERECO AS LOGRADOURO, CEP FROM $banco.LOG_CPC"
 
-echo "["$(date)"] "- echo "GeraÁ„o da Tabela destino terminado"
+echo "["$(date)"] "- echo "Gera√ß√£o da Tabela destino terminado"
 echo
 
-#Para mostrar as tabelas e o n˙mero de registros
+#Para mostrar as tabelas e o n√∫mero de registros
 #mysql -e "use rcamo273_movedb; SELECT table_name, table_rows FROM information_schema.tables WHERE table_schema = 'rcamo273_movedb' AND table_type = 'BASE TABLE' ORDER BY table_name;"
 
 IFS=$OLDIFS
